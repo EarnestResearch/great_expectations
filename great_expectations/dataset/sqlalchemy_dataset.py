@@ -73,6 +73,11 @@ except ImportError:
     bigquery_types_tuple = None
     pybigquery = None
 
+try:
+    import pyhive.sqlalchemy_presto as presto
+except ImportError:
+    presto = None
+
 
 class SqlAlchemyBatchReference(object):
     def __init__(self, engine, table_name=None, schema=None, query=None):
@@ -313,6 +318,14 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
         if table_name is None:
             raise ValueError("No table_name provided.")
 
+        table_name_split = table_name.split('.')
+        if len(table_name_split) == 2:
+            logger.info('Schema was provided as part of table name')
+            # schema was provided as part of the table name
+            schema, table_name = table_name_split
+
+        self._table = sa.Table(table_name, sa.MetaData(), schema=schema)
+
         if engine is None and connection_string is None:
             raise ValueError("Engine or connection_string must be provided.")
 
@@ -354,6 +367,8 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             self.dialect = import_module("sqlalchemy_redshift.dialect")
         elif self.engine.dialect.name.lower() == "bigquery":
             self.dialect = import_module("pybigquery.sqlalchemy_bigquery")
+        elif self.engine.dialect.name.lower() == "presto":
+            self.dialect = import_module("pyhive.sqlalchemy_presto")
         else:
             self.dialect = None
 
@@ -855,6 +870,9 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             stmt = (
                 custom_sqlmod[0] + "into {table_name} from" + custom_sqlmod[1]
             ).format(table_name=table_name)
+        elif (self.engine.dialect.name.lower() == "presto"):
+            stmt = "CREATE OR REPLACE TABLE {table_name} AS {custom_sql}".format(
+                table_name=table_name, custom_sql=custom_sql)
         else:
             stmt = 'CREATE TEMPORARY TABLE "{table_name}" AS {custom_sql}'.format(
                 table_name=table_name, custom_sql=custom_sql

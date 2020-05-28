@@ -137,6 +137,9 @@
       "schemas": {
         "postgresql": {
           "empty_column": "TEXT"
+        },
+        "presto": {
+          "empty_column": "VARCHAR"
         }
       },
       "tests": [{
@@ -165,6 +168,9 @@
       },
       "pandas": {
         "dates": "datetime64"
+      },
+      "presto": {
+        "dates": "TIMESTAMP"
       }
     },
     "tests" : [

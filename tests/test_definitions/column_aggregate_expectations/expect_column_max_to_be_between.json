@@ -31,6 +31,16 @@
         "zzz" : "TEXT",
         "a" : "INTEGER",
         "b" : "INTEGER"
+      },
+      "presto": {
+        "w" : "INTEGER",
+        "x" : "INTEGER",
+        "y" : "INTEGER",
+        "z" : "VARCHAR",
+        "zz" : "TIMESTAMP",
+        "zzz" : "VARCHAR",
+        "a" : "INTEGER",
+        "b" : "INTEGER"
       }
     },
     "tests" : [{

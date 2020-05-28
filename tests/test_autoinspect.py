@@ -26,7 +26,7 @@ def test_default_no_autoinspection():
 
 def test_autoinspect_existing_dataset(test_backend):
     # Get a basic dataset with no expectations
-    df = get_dataset(test_backend, {"a": [1, 2, 3]}, profiler=None)
+    df = get_dataset(test_backend, {"a": [1, 2, 3]}, "autoinspect_existing_dataset", profiler=None)
     suite = df.get_expectation_suite()
     assert len(suite.expectations) == 0
 
@@ -45,7 +45,7 @@ def test_autoinspect_existing_dataset(test_backend):
 
 def test_autoinspect_columns_exist(test_backend):
     df = get_dataset(
-        test_backend, {"a": [1, 2, 3]}, profiler=ge.profile.ColumnsExistProfiler
+        test_backend, {"a": [1, 2, 3]}, "autoinspect_columns_exist", profiler=ge.profile.ColumnsExistProfiler
     )
     suite = df.get_expectation_suite()
 

@@ -21,6 +21,16 @@
         "unique": "IntegerType",
         "null": "NullType",
         "mult_dup": "StringType"
+      },
+      "presto": {
+        "a": "VARCHAR",
+        "b": "VARCHAR",
+        "c": "INTEGER",
+        "d": "VARCHAR",
+        "n": "INTEGER",
+        "unique": "INTEGER",
+        "null": "VARCHAR",
+        "mult_dup": "VARCHAR"
       }
     },
     "tests" : [

@@ -74,6 +74,27 @@ try:
 except ImportError:
     MYSQL_TYPES = {}
 
+try:
+    import sqlalchemy.types as sqltypes
+    from pyhive.sqlalchemy_presto import presto as prestotypes
+    from pyhive.sqlalchemy_presto import PrestoDialect as prestodialect
+
+    PRESTO_TYPES = {
+        "VARCHAR": sqltypes.VARCHAR,
+        "TEXT": sqltypes.VARCHAR,
+        "CHAR": sqltypes.CHAR,
+        "DOUBLE": prestotypes.DOUBLE,
+        "INTEGER": sqltypes.INTEGER,
+        "SMALLINT": sqltypes.SMALLINT,
+        "BIGINT": sqltypes.BIGINT,
+        "DATETIME": sqltypes.TIMESTAMP,
+        "TIMESTAMP": sqltypes.TIMESTAMP,
+        "DATE": sqltypes.DATE,
+        "FLOAT": prestotypes.DOUBLE,
+        "BOOLEAN": prestotypes.BOOLEAN,
+    }
+except ImportError:
+    PRESTO_TYPES = {}
 
 def modify_locale(func):
     @wraps(func)
@@ -132,9 +153,14 @@ def assertDeepAlmostEqual(expected, actual, *args, **kwargs):
             exc = AssertionError("%s\nTRACE: %s" % (str(exc), trace))
         raise exc
 
+def generate_test_table_name(dataset_id):
+    return "test_data_" + dataset_id + "_" + "".join(
+            [random.choice(string.ascii_lowercase + string.digits) for n in range(8)]
+            # ascii_lowercase because of the following issue: https://github.com/dropbox/PyHive/issues/302
+        )
 
 def get_dataset(
-    dataset_type, data, schemas=None, profiler=ColumnsExistProfiler, caching=True
+    dataset_type, data, dataset_id, schemas=None, profiler=ColumnsExistProfiler, caching=True
 ):
     """Utility to create datasets for json-formatted tests.
     """
@@ -189,9 +215,7 @@ def get_dataset(
                 elif type_ in ["DATETIME", "TIMESTAMP"]:
                     df[col] = pd.to_datetime(df[col])
 
-        tablename = "test_data_" + "".join(
-            [random.choice(string.ascii_letters + string.digits) for n in range(8)]
-        )
+        tablename = generate_test_table_name(dataset_id)
         df.to_sql(name=tablename, con=conn, index=False, dtype=sql_dtypes)
 
         # Build a SqlAlchemyDataset using that database
@@ -225,9 +249,8 @@ def get_dataset(
                 elif type_ in ["DATETIME", "TIMESTAMP"]:
                     df[col] = pd.to_datetime(df[col])
 
-        tablename = "test_data_" + "".join(
-            [random.choice(string.ascii_letters + string.digits) for n in range(8)]
-        )
+        tablename = generate_test_table_name(dataset_id)
+
         df.to_sql(name=tablename, con=conn, index=False, dtype=sql_dtypes)
 
         # Build a SqlAlchemyDataset using that database
@@ -256,12 +279,47 @@ def get_dataset(
                 elif type_ in ["FLOAT", "DOUBLE", "DOUBLE_PRECISION"]:
                     df[col] = pd.to_numeric(df[col])
                 elif type_ in ["DATETIME", "TIMESTAMP"]:
-                    df[col] = pd.to_datetime(df[col])
+                    df[col] = pd.to_timestamp(df[col])
 
-        tablename = "test_data_" + "".join(
-            [random.choice(string.ascii_letters + string.digits) for n in range(8)]
-        )
         df.to_sql(name=tablename, con=conn, index=False, dtype=sql_dtypes)
+
+        # Build a SqlAlchemyDataset using that database
+        return SqlAlchemyDataset(
+            tablename, engine=conn, profiler=profiler, caching=caching
+        )
+
+    elif dataset_type == "presto":
+        from sqlalchemy import create_engine
+
+        engine = create_engine(
+            "presto://presto@localhost/memory/test_ci",
+            echo=False  # print statements as they are executed
+        )
+        conn = engine.connect()
+
+        sql_dtypes = {}
+        if (
+            schemas
+            and "presto" in schemas
+            and isinstance(engine.dialect, prestodialect)
+        ):
+            schema = schemas["presto"]
+            sql_dtypes = {col: PRESTO_TYPES[dtype] for (col, dtype) in schema.items()}
+            for col in schema:
+                type_ = schema[col].lower()
+                if type_ in ["integer", "smallint", "bigint"]:
+                    df[col] = pd.to_numeric(df[col])
+                elif type_ in ["float", "double"]:
+                    df[col] = pd.to_numeric(df[col])
+                elif type_ in ["timestamp", "datetime"]:
+                    df[col] = pd.to_datetime(df[col]).dt.strftime('%Y-%m-%d %H:%M:%S')
+                elif type_ in ["varchar"]:
+                    df[col] = df[col].astype(str)
+
+        tablename = generate_test_table_name(dataset_id)
+
+        conn.execute("CREATE SCHEMA IF NOT EXISTS test_ci")
+        df.to_sql(name=tablename, con=conn, index=False)
 
         # Build a SqlAlchemyDataset using that database
         return SqlAlchemyDataset(
@@ -384,7 +442,7 @@ def candidate_getter_is_on_temporary_notimplemented_list(context, getter):
 
 
 def candidate_test_is_on_temporary_notimplemented_list(context, expectation_type):
-    if context in ["sqlite", "postgresql", "mysql"]:
+    if context in ["sqlite", "postgresql", "mysql", "presto"]:
         return expectation_type in [
             # "expect_column_to_exist",
             # "expect_table_row_count_to_be_between",

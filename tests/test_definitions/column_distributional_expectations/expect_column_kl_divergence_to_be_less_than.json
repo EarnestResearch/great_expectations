@@ -125,6 +125,13 @@
         "norm_10_1": "NUMERIC",
         "bimodal": "NUMERIC",
         "categorical_fixed": "TEXT"
+      },
+      "presto": {
+        "norm_0_1": "DOUBLE",
+        "norm_1_1": "DOUBLE",
+        "norm_10_1": "DOUBLE",
+        "bimodal": "DOUBLE",
+        "categorical_fixed": "VARCHAR"
       }
     },
     "tests": [

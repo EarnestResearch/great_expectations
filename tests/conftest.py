@@ -65,6 +65,11 @@ def pytest_addoption(parser):
         help="If set, suppress tests against postgresql",
     )
     parser.addoption(
+        "--no-presto",
+        action="store_true",
+        help="If set, suppress tests against presto",
+    )
+    parser.addoption(
         "--aws-integration",
         action="store_true",
         help="If set, run aws integration tests",
@@ -114,6 +119,19 @@ def build_test_backends_list(metafunc):
             #         conn.close()
             #     except (ImportError, sa.exc.SQLAlchemyError):
             #         warnings.warn("No mysql context available for testing.")
+
+        no_presto = metafunc.config.getoption("--no-presto")
+        if not no_presto:
+            presto_conn_str = "presto://presto@localhost/memory/test_ci"
+            try:
+                engine = sa.create_engine(presto_conn_str)
+                conn = engine.connect()
+            except (ImportError, sa.exc.SQLAlchemyError):
+                raise ImportError(
+                    "presto tests are requested, but unable to connect to the presto database at "
+                    f"'{presto_conn_str}'"
+                )
+            test_backends += ["presto"]
     return test_backends
 
 
@@ -145,7 +163,7 @@ def no_usage_stats(monkeypatch):
 
 @pytest.fixture
 def sa(test_backends):
-    if "postgresql" not in test_backends and "sqlite" not in test_backends:
+    if "postgresql" not in test_backends and "sqlite" not in test_backends and "presto" not in test_backends:
         pytest.skip("No recognized sqlalchemy backend selected.")
     else:
         import sqlalchemy as sa
@@ -1227,8 +1245,9 @@ def numeric_high_card_dataset(test_backend, numeric_high_card_dict):
         "sqlite": {"norm_0_1": "FLOAT",},
         "mysql": {"norm_0_1": "FLOAT",},
         "spark": {"norm_0_1": "FloatType",},
+        "presto": {"norm_0_1": "DOUBLE"},
     }
-    return get_dataset(test_backend, numeric_high_card_dict, schemas=schemas)
+    return get_dataset(test_backend, numeric_high_card_dict, "numeric_high_card", schemas=schemas)
 
 
 @pytest.fixture
@@ -1254,8 +1273,9 @@ def datetime_dataset(test_backend):
         "sqlite": {"datetime": "TIMESTAMP",},
         "mysql": {"datetime": "TIMESTAMP",},
         "spark": {"datetime": "TimestampType",},
+        "presto": {"datetime": "TIMESTAMP"},
     }
-    return get_dataset(test_backend, data, schemas=schemas)
+    return get_dataset(test_backend, data, "datetime", schemas=schemas)
 
 
 @pytest.fixture
@@ -1378,8 +1398,9 @@ def non_numeric_low_card_dataset(test_backend):
         "sqlite": {"lowcardnonnum": "VARCHAR",},
         "mysql": {"lowcardnonnum": "TEXT",},
         "spark": {"lowcardnonnum": "StringType",},
+        "presto": {"lowcardnonnum": "VARCHAR"},
     }
-    return get_dataset(test_backend, data, schemas=schemas)
+    return get_dataset(test_backend, data, "non_numeric_low_card", schemas=schemas)
 
 
 @pytest.fixture
@@ -1805,8 +1826,9 @@ def non_numeric_high_card_dataset(test_backend):
         "sqlite": {"highcardnonnum": "VARCHAR", "medcardnonnum": "VARCHAR",},
         "mysql": {"highcardnonnum": "TEXT", "medcardnonnum": "TEXT",},
         "spark": {"highcardnonnum": "StringType", "medcardnonnum": "StringType",},
+        "presto": {"highcardnonnum": "VARCHAR", "medcardnonnum": "VARCHAR",},
     }
-    return get_dataset(test_backend, data, schemas=schemas)
+    return get_dataset(test_backend, data, "non_numeric_high_card", schemas=schemas)
 
 
 def dataset_sample_data(test_backend):
@@ -1837,6 +1859,7 @@ def dataset_sample_data(test_backend):
             "nulls": "FloatType",
             "naturals": "FloatType",
         },
+        "presto": {"infinities": "DOUBLE", "nulls": "DOUBLE", "naturals": "DOUBLE"},
     }
     return data, schemas
 
@@ -1846,14 +1869,14 @@ def dataset(test_backend):
     """Provide dataset fixtures that have special values and/or are otherwise useful outside
     the standard json testing framework"""
     data, schemas = dataset_sample_data(test_backend)
-    return get_dataset(test_backend, data, schemas=schemas)
+    return get_dataset(test_backend, data, "dataset_sample_data", schemas=schemas)
 
 
 @pytest.fixture
 def pandas_dataset():
     test_backend = "PandasDataset"
     data, schemas = dataset_sample_data(test_backend)
-    return get_dataset(test_backend, data, schemas=schemas)
+    return get_dataset(test_backend, data, "pandas_dataset_sample_data", schemas=schemas)
 
 
 @pytest.fixture
@@ -1864,6 +1887,8 @@ def sqlalchemy_dataset(test_backends):
         backend = "postgresql"
     elif "sqlite" in test_backends:
         backend = "sqlite"
+    elif "presto" in test_backends:
+        backend = "presto"
     else:
         return
 
@@ -1879,8 +1904,9 @@ def sqlalchemy_dataset(test_backends):
             "naturals": "DOUBLE_PRECISION",
         },
         "sqlite": {"infinities": "FLOAT", "nulls": "FLOAT", "naturals": "FLOAT"},
+        "presto": {"infinities": "DOUBLE", "nulls": "DOUBLE", "naturals": "DOUBLE"},
     }
-    return get_dataset(backend, data, schemas=schemas, profiler=None)
+    return get_dataset(backend, data, "sqlalchemy_dataset", schemas=schemas, profiler=None)
 
 
 @pytest.fixture
@@ -1903,6 +1929,18 @@ def postgresql_engine(test_backend):
         engine.close()
     else:
         pytest.skip("Skipping test designed for postgresql on non-postgresql backend.")
+
+
+@pytest.fixture
+def presto_engine(test_backend):
+    if test_backend == "presto":
+        import sqlalchemy as sa
+
+        engine = sa.create_engine("presto://presto@localhost/memory/test_ci").connect()
+        yield engine
+        engine.close()
+    else:
+        pytest.skip("Skipping test designed for presto on non-presto backend.")
 
 
 @pytest.fixture

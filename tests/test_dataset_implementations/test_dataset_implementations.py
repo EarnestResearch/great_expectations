@@ -36,7 +36,7 @@ def test_implementations(test_backend, test):
 
     data = test_datasets[test["dataset"]]["data"]
     schema = test_datasets[test["dataset"]]["schemas"].get(test_backend)
-    dataset = get_dataset(test_backend, data, schemas=schema)
+    dataset = get_dataset(test_backend, data, "implementations", schemas=schema)
     func = getattr(dataset, test["func"])
     run_kwargs = copy.deepcopy(test.get("kwargs", {}))
     for arg in run_kwargs.keys():
@@ -82,7 +82,7 @@ def test_get_column_value_counts(test_backend):
         "n": [0, None],
         "b": [True, False],
     }
-    dataset = get_dataset(test_backend, data, schemas=schemas)
+    dataset = get_dataset(test_backend, data, "get_column_value_counts", schemas=schemas)
 
     res = dataset.get_column_value_counts("x")
     expected = pd.Series(data["x"]).value_counts()

@@ -84,6 +84,15 @@
           "b": "BOOLEAN",
           "s": "TEXT",
           "s1": "TEXT"
+        },
+        "presto": {
+          "x": "INTEGER",
+          "y": "DOUBLE",
+          "z": "VARCHAR",
+          "n": "VARCHAR",
+          "b": "BOOLEAN",
+          "s": "VARCHAR",
+          "s1": "VARCHAR"
         }
       },
       "tests": [

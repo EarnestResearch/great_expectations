@@ -37,6 +37,15 @@
         "zz": "StringType",
         "a": "IntegerType",
         "b": "IntegerType"
+      },
+      "presto": {
+        "w": "INTEGER",
+        "x": "INTEGER",
+        "y": "INTEGER",
+        "z": "VARCHAR",
+        "zz": "TIMESTAMP",
+        "a": "INTEGER",
+        "b": "INTEGER"
       }
     },
     "tests" : [{

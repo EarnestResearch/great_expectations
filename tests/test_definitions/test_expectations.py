@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy.dialects.mysql import dialect as mysqlDialect
 from sqlalchemy.dialects.postgresql import dialect as postgresqlDialect
 from sqlalchemy.dialects.sqlite import dialect as sqliteDialect
+import pyhive.sqlalchemy_presto as prestoDialect
 
 from great_expectations.dataset import PandasDataset, SparkDFDataset, SqlAlchemyDataset
 
@@ -20,6 +21,10 @@ from ..test_utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class GenerateTestException(Exception):
+    pass
 
 
 def pytest_generate_tests(metafunc):
@@ -57,7 +62,10 @@ def pytest_generate_tests(metafunc):
                         schemas = data_asset = None
                     else:
                         schemas = d["schemas"] if "schemas" in d else None
-                        data_asset = get_dataset(c, d["data"], schemas=schemas)
+                        try:
+                            data_asset = get_dataset(c, d["data"], test_configuration["expectation_type"], schemas=schemas)
+                        except Exception as e:
+                            raise GenerateTestException(f"Failed getting dataset from file {filename}, tests: {json.dumps(d)}") from e
 
                     for test in d["tests"]:
                         generate_test = True
@@ -82,6 +90,10 @@ def pytest_generate_tests(metafunc):
                                     generate_test = True
                                 elif "mysql" in test["only_for"] and isinstance(
                                     data_asset.engine.dialect, mysqlDialect
+                                ):
+                                    generate_test = True
+                                elif "presto" in test["only_for"] and isinstance(
+                                    data_asset.engine.dialect, prestoDialect
                                 ):
                                     generate_test = True
                             elif isinstance(data_asset, PandasDataset):
@@ -124,6 +136,11 @@ def pytest_generate_tests(metafunc):
                                 "mysql" in test["suppress_test_for"]
                                 and isinstance(data_asset, SqlAlchemyDataset)
                                 and isinstance(data_asset.engine.dialect, mysqlDialect)
+                            )
+                            or (
+                                "presto" in test["suppress_test_for"]
+                                and isinstance(data_asset, SqlAlchemyDataset)
+                                and isinstance(data_asset.engine.dialect, prestoDialect)
                             )
                             or (
                                 "pandas" in test["suppress_test_for"]

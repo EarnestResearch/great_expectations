@@ -13,7 +13,7 @@ schemas = {
 
 def test_caching(test_backend):
     dataset = get_dataset(
-        test_backend, data, schemas=schemas.get(test_backend), caching=True
+        test_backend, data, "test_caching_1", schemas=schemas.get(test_backend), caching=True
     )
     dataset.get_column_max("a")
     dataset.get_column_max("a")
@@ -23,7 +23,7 @@ def test_caching(test_backend):
     assert dataset.get_column_max.cache_info().misses == 2
 
     dataset = get_dataset(
-        test_backend, data, schemas=schemas.get(test_backend), caching=False
+        test_backend, data, "test_caching_2", schemas=schemas.get(test_backend), caching=False
     )
     with pytest.raises(AttributeError):
         dataset.get_column_max.cache_info()
@@ -31,7 +31,7 @@ def test_caching(test_backend):
 
 def test_head(test_backend):
     dataset = get_dataset(
-        test_backend, data, schemas=schemas.get(test_backend), caching=True
+        test_backend, data, "test_head_1", schemas=schemas.get(test_backend), caching=True
     )
     dataset.expect_column_mean_to_be_between("b", 5, 5)
     head = dataset.head(1)
@@ -46,7 +46,7 @@ def test_head(test_backend):
     # column (it would always name the column "*").
     # This should also work if we only get a single column
     dataset = get_dataset(
-        test_backend, {"a": data["a"]}, schemas=schemas.get(test_backend), caching=True
+        test_backend, {"a": data["a"]}, "test_head_2", schemas=schemas.get(test_backend), caching=True
     )
     head = dataset.head(1)
     assert isinstance(head, PandasDataset)
