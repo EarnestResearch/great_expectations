@@ -80,7 +80,6 @@ def build_test_backends_list(metafunc):
         except ImportError:
             raise ValueError("spark tests are requested, but pyspark is not installed")
         test_backends += ["SparkDFDataset"]
-
     no_sqlalchemy = metafunc.config.getoption("--no-sqlalchemy")
     if not no_sqlalchemy:
         test_backends += ["sqlite"]
