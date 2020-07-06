@@ -86,6 +86,11 @@ except ImportError:
     bigquery_types_tuple = None
     pybigquery = None
 
+try:
+    import pyathena.sqlalchemy_athena
+except ImportError:
+    pyathena = None
+
 
 class SqlAlchemyBatchReference(object):
     def __init__(self, engine, table_name=None, schema=None, query=None):
@@ -372,6 +377,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
         elif self.engine.dialect.name.lower() == "bigquery":
             self.dialect = import_library_module(
                 module_name="pybigquery.sqlalchemy_bigquery"
+            )
+        elif self.engine.dialect.name.lower() == "awsathena":
+            self.dialect = import_library_module(
+                module_name="pyathena.sqlalchemy_athena"
             )
         else:
             self.dialect = None
@@ -977,6 +986,10 @@ class SqlAlchemyDataset(MetaSqlAlchemyDataset):
             stmt = (
                 custom_sqlmod[0] + "into {table_name} from" + custom_sqlmod[1]
             ).format(table_name=table_name)
+        elif self.engine.dialect.name.lower() == "awsathena":
+            stmt = "CREATE OR REPLACE TABLE {table_name} AS {custom_sql}".format(
+                table_name=table_name, custom_sql=custom_sql
+            )
         else:
             stmt = 'CREATE TEMPORARY TABLE "{table_name}" AS {custom_sql}'.format(
                 table_name=table_name, custom_sql=custom_sql

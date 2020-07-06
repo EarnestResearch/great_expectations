@@ -23,6 +23,7 @@ pandas>=0.22.0  # package
 pre-commit>=2.3.0  # lint
 psycopg2-binary>=2.7.6  # sqlalchemy_tests
 pyarrow>=0.12.0  # all_tests
+PyAthena[SQLAlchemy]>=1.1
 pybigquery>=0.4.15  # sqlalchemy_tests
 PyMySQL>=0.9.3,<0.10  # sqlalchemy_tests
 pyparsing>=2.4,<3  # package
